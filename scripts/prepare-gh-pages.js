@@ -197,8 +197,8 @@ function replaceCompanyName(html) {
 
 function normalizeStaticCopy(html) {
   return html.replace(
-    /This static archive keeps the original site content available on GitHub Pages\. For a free consultation, call/g,
-    'For a free consultation, call',
+    /\n\s*<p>[^<]*<a href="tel:\+18134047707">\(813\) 404-7707<\/a>\.<\/p>/g,
+    '',
   );
 }
 
@@ -302,7 +302,6 @@ function buildContactCta(relativePath) {
 
   return `<div class="mirror-static-cta">
   <h3>Contact Effective Speech</h3>
-  <p>For a free consultation, call <a href="${PHONE_HREF}">${PHONE_LABEL}</a>.</p>
   <p>Services are available throughout the Tampa Bay area, including Odessa, Trinity, New Port Richey, and Lutz.</p>
   <div class="mirror-static-actions">
     <a class="mirror-static-button" href="${PHONE_HREF}">Call ${PHONE_LABEL}</a>
