@@ -103,6 +103,7 @@ for (const fullPath of htmlFiles) {
   html = stripDynamicScripts(html);
   html = ensureMirrorStyle(html);
   html = ensureExternalFonts(html, relativePath);
+  html = normalizeStaticCopy(html);
   html = replaceCompanyName(html);
   html = replaceFooterLinks(html, relativePath);
   html = replaceContactPlaceholders(html);
@@ -191,6 +192,13 @@ function replaceCompanyName(html) {
   return html.replace(
     /<span class="thrive-shortcode-content"[^>]*data-shortcode-name="\[Company\] Company Name"[^>]*><\/span>/g,
     'Effective Speech, LLC',
+  );
+}
+
+function normalizeStaticCopy(html) {
+  return html.replace(
+    /This static archive keeps the original site content available on GitHub Pages\. For a free consultation, call/g,
+    'For a free consultation, call',
   );
 }
 
@@ -294,7 +302,7 @@ function buildContactCta(relativePath) {
 
   return `<div class="mirror-static-cta">
   <h3>Contact Effective Speech</h3>
-  <p>This static archive keeps the original site content available on GitHub Pages. For a free consultation, call <a href="${PHONE_HREF}">${PHONE_LABEL}</a>.</p>
+  <p>For a free consultation, call <a href="${PHONE_HREF}">${PHONE_LABEL}</a>.</p>
   <p>Services are available throughout the Tampa Bay area, including Odessa, Trinity, New Port Richey, and Lutz.</p>
   <div class="mirror-static-actions">
     <a class="mirror-static-button" href="${PHONE_HREF}">Call ${PHONE_LABEL}</a>
