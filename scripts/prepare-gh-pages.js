@@ -4,6 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = process.cwd();
+const ROOT_PAGE = 'index.html';
+const SITE_HOST = 'effectivespeech.org';
+const SITE_ORIGIN = `https://${SITE_HOST}`;
 const CONTACT_PAGE = 'contact-effective-speech/index.html';
 const ICON_PATH = 'wp-content/uploads/2023/03/cropped-44823_Effective_Speech__LLC_SR-01-1.png';
 const PHONE_LABEL = '(813) 404-7707';
@@ -92,6 +95,8 @@ const GOOGLE_FONT_LINKS = `<link id="mirror-google-fonts" rel="preconnect" href=
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Muli:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800&display=swap">`;
 
+ensureCname();
+
 const htmlFiles = walkHtmlFiles(ROOT);
 
 for (const fullPath of htmlFiles) {
@@ -103,6 +108,8 @@ for (const fullPath of htmlFiles) {
   html = stripDynamicScripts(html);
   html = ensureMirrorStyle(html);
   html = ensureExternalFonts(html, relativePath);
+  html = ensureCustomDomainMetadata(html, relativePath);
+  html = normalizeExternalAssetUrls(html);
   html = normalizeStaticCopy(html);
   html = replaceCompanyName(html);
   html = replaceFooterLinks(html, relativePath);
@@ -141,12 +148,26 @@ function walkHtmlFiles(dir) {
   return files;
 }
 
+function ensureCname() {
+  const cnamePath = path.join(ROOT, 'CNAME');
+  const content = `${SITE_HOST}\n`;
+
+  if (!fs.existsSync(cnamePath) || fs.readFileSync(cnamePath, 'utf8') !== content) {
+    fs.writeFileSync(cnamePath, content);
+  }
+}
+
 function toPosix(value) {
   return value.split(path.sep).join('/');
 }
 
 function relLink(fromPage, toRootFile) {
   return path.posix.relative(path.posix.dirname(fromPage), toRootFile) || '.';
+}
+
+function publicUrlForPage(relativePath) {
+  const pagePath = relativePath === ROOT_PAGE ? '' : relativePath.replace(/index\.html$/, '');
+  return pagePath ? `${SITE_ORIGIN}/${pagePath}` : `${SITE_ORIGIN}/`;
 }
 
 function stripInjectedMirrorArtifacts(html) {
@@ -186,6 +207,41 @@ function ensureExternalFonts(html, relativePath) {
   }
 
   return updated.replace('</head>', `${GOOGLE_FONT_LINKS}\n</head>`);
+}
+
+function ensureCustomDomainMetadata(html, relativePath) {
+  const pageUrl = publicUrlForPage(relativePath);
+  const oembedBase = `${SITE_ORIGIN}/wp-json/oembed/1.0/embed`;
+  let updated = html
+    .replace(
+      /<link rel="canonical" href="[^"]*" \/>/i,
+      `<link rel="canonical" href="${pageUrl}" />`,
+    )
+    .replace(
+      /<link rel='shortlink' href='[^']*' \/>/i,
+      `<link rel='shortlink' href='${pageUrl}' />`,
+    )
+    .replace(
+      /<link rel="alternate" title="oEmbed \(JSON\)" type="application\/json\+oembed" href="[^"]*" \/>/i,
+      `<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="${oembedBase}?url=${pageUrl}" />`,
+    )
+    .replace(
+      /<link rel="alternate" title="oEmbed \(XML\)" type="text\/xml\+oembed" href="[^"]*" \/>/i,
+      `<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="${oembedBase}?url=${pageUrl}&amp;format=xml" />`,
+    );
+
+  if (!updated.includes(`href="${pageUrl}" />`) && updated.includes('</head>')) {
+    updated = updated.replace('</head>', `<link rel="canonical" href="${pageUrl}" />\n</head>`);
+  }
+
+  return updated;
+}
+
+function normalizeExternalAssetUrls(html) {
+  return html.replace(
+    /url\((['"]?)(?:\.\.\/)+(secure\.gravatar\.com\/[^)'"]+)\1\)/g,
+    'url($1https://$2$1)',
+  );
 }
 
 function replaceCompanyName(html) {
@@ -298,7 +354,7 @@ function buildPostCta(relativePath) {
 }
 
 function buildContactCta(relativePath) {
-  const homeHref = relLink(relativePath, 'index.html');
+  const homeHref = relLink(relativePath, ROOT_PAGE);
 
   return `<div class="mirror-static-cta">
   <h3>Contact Effective Speech</h3>
